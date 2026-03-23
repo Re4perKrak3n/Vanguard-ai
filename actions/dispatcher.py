@@ -62,6 +62,10 @@ class ActionDispatcher:
             verdict_data: Full Brain verdict (passed to dashboard + Telegram).
         """
         for action in actions:
+            if not isinstance(action, dict):
+                log.warning("Action is not a dictionary: %s", action)
+                continue
+
             fn_name = action.get("function", "")
             params = action.get("params", {})
 

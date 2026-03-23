@@ -194,40 +194,70 @@ class BrainReasoner:
         # Fix trailing commas (common LLM mistake)
         cleaned = re.sub(r',\s*([\]}])', r'\1', cleaned)
 
+        parsed_json = None
+
         # Attempt 1: Direct parse
         try:
-            return json.loads(cleaned)
+            parsed_json = json.loads(cleaned)
         except json.JSONDecodeError:
             pass
 
         # Attempt 2: Extract JSON object from surrounding text
-        json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
-        if json_match:
+        if parsed_json is None:
+            json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+            if json_match:
+                try:
+                    candidate = json_match.group()
+                    candidate = candidate.replace("\\_", "_")
+                    candidate = re.sub(r',\s*([\]}])', r'\1', candidate)
+                    parsed_json = json.loads(candidate)
+                except json.JSONDecodeError:
+                    pass
+
+        # Attempt 3: Extract JSON array from surrounding text
+        if parsed_json is None:
+            json_match = re.search(r'\[.*\]', cleaned, re.DOTALL)
+            if json_match:
+                try:
+                    candidate = json_match.group()
+                    candidate = candidate.replace("\\_", "_")
+                    candidate = re.sub(r',\s*([\]}])', r'\1', candidate)
+                    parsed_json = json.loads(candidate)
+                except json.JSONDecodeError:
+                    pass
+
+        # Attempt 4: Salvage truncated JSON
+        if parsed_json is None:
             try:
-                candidate = json_match.group()
-                candidate = candidate.replace("\\_", "_")
-                candidate = re.sub(r',\s*([\]}])', r'\1', candidate)
-                return json.loads(candidate)
-            except json.JSONDecodeError:
+                truncated = cleaned.rstrip()
+                if not truncated.endswith("}"):
+                    open_braces = truncated.count("{") - truncated.count("}")
+                    open_brackets = truncated.count("[") - truncated.count("]")
+                    if truncated.count('"') % 2 != 0:
+                        truncated += '"'
+                    truncated += "]" * max(0, open_brackets)
+                    truncated += "}" * max(0, open_braces)
+                truncated = re.sub(r',\s*([\]}])', r'\1', truncated)
+                parsed_json = json.loads(truncated)
+            except Exception:
                 pass
 
-        # Attempt 3: Salvage truncated JSON
-        try:
-            truncated = cleaned.rstrip()
-            if not truncated.endswith("}"):
-                open_braces = truncated.count("{") - truncated.count("}")
-                open_brackets = truncated.count("[") - truncated.count("]")
-                if truncated.count('"') % 2 != 0:
-                    truncated += '"'
-                truncated += "]" * max(0, open_brackets)
-                truncated += "}" * max(0, open_braces)
-            truncated = re.sub(r',\s*([\]}])', r'\1', truncated)
-            return json.loads(truncated)
-        except Exception:
-            pass
+        if parsed_json is None:
+            log.warning("Failed to parse Brain output: %s", raw[:300])
+            return None
 
-        log.warning("Failed to parse Brain output: %s", raw[:300])
-        return None
+        # Ensure the returned value is a dictionary
+        if isinstance(parsed_json, list):
+            return {
+                "threat_score": 0.5,
+                "chain_of_thought": "Parsed from array output",
+                "actions": parsed_json
+            }
+        elif isinstance(parsed_json, dict):
+            return parsed_json
+        else:
+            log.warning("Brain output is not a valid object or array: %s", type(parsed_json))
+            return None
 
     def _fallback_verdict(self, detection_summary: str, audio_transcript: str) -> Dict[str, Any]:
         """Simple deterministic fallback when LLM model cannot be loaded."""
