@@ -1,0 +1,46 @@
+# Vanguard AI — Dependencies
+# Install: pip install -r requirements.txt
+
+# Core AI — llama.cpp (GGUF inference)
+# Install separately with CUDA:
+# pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
+# llama-cpp-python  # installed via special index
+
+# YOLO Detection
+ultralytics>=8.4.0
+
+# TTS
+pyttsx3
+kokoro>=0.7.0
+sounddevice
+phonemizer<3.4
+
+# Kokoro transitive deps
+loguru
+num2words
+spacy
+
+# STT (Speech-to-Text)
+faster-whisper>=1.0.0
+
+# Dashboard
+fastapi
+uvicorn
+python-multipart
+
+# Desktop GUI
+customtkinter
+Pillow
+
+# Ngrok tunnel
+pyngrok
+
+# Vision
+opencv-python
+numpy
+
+# Telegram
+requests
+
+# PyTorch (YOLO needs it, but no torchvision/transformers)
+torch>=2.6.0

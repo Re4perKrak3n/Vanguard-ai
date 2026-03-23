@@ -1,0 +1,28 @@
+# Environments
+venv/
+venv312/
+.env
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Logs
+logs/
+run.log
+*.log
+
+# Models / Weights
+models/
+*.pt
+*.safetensors
+*.bin
+*.onnx
+
+# Misc
+.DS_Store
