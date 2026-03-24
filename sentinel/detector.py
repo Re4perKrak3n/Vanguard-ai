@@ -47,7 +47,18 @@ class DetectionResult:
         else:
             counts: dict[str, int] = {}
             for d in self.detections:
-                counts[d.class_name] = counts.get(d.class_name, 0) + 1
+                label = d.class_name
+                if self.frame is not None and d.class_name == "person":
+                    h, w = self.frame.shape[:2]
+                    x1, y1, x2, y2 = d.bbox
+                    box_area = max(0.0, (x2 - x1) * (y2 - y1))
+                    frame_area = max(1.0, float(w * h))
+                    box_height = max(0.0, y2 - y1)
+                    if box_area / frame_area > 0.18 or box_height / max(1.0, h) > 0.65:
+                        label = "person (very close)"
+                    elif box_area / frame_area > 0.08 or box_height / max(1.0, h) > 0.45:
+                        label = "person (close)"
+                counts[label] = counts.get(label, 0) + 1
             parts.extend(f"{count}x {name}" for name, count in counts.items())
         return "Detected: " + ", ".join(parts) if not self.bypass_reason else " ".join(parts)
 

@@ -7,15 +7,32 @@ LLaVA-specific multimodal handlers that can mismatch model families.
 
 import json
 import logging
+import os
 import re
+import threading
 import time
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from brain.prompts import SYSTEM_PROMPT, build_user_prompt
+from brain.prompts import CHAT_SYSTEM_PROMPT, SYSTEM_PROMPT, build_user_prompt
 
 log = logging.getLogger("brain.reasoner")
+
+
+def _bootstrap_llama_runtime() -> None:
+    """Register CUDA DLL locations before importing llama.cpp on Windows."""
+    if not hasattr(os, "add_dll_directory"):
+        return
+
+    try:
+        import torch
+
+        torch_lib = os.path.join(os.path.dirname(torch.__file__), "lib")
+        if os.path.isdir(torch_lib):
+            os.add_dll_directory(torch_lib)
+    except Exception as exc:
+        log.debug("Torch CUDA DLL bootstrap skipped: %s", exc)
 
 
 class BrainReasoner:
@@ -23,26 +40,24 @@ class BrainReasoner:
 
     def __init__(
         self,
-        model_path: str = "models/Qwen2.5-VL-3B-Instruct.Q4_K_M.gguf",
-        mmproj_path: str = "models/mmproj-Qwen2.5-VL-3B-Instruct-f16.gguf",
+        model_path: str = "models/qwen2.5-3b-instruct-q4_k_m.gguf",
         n_gpu_layers: int = 99,
         n_ctx: int = 4096,
         max_tokens: int = 512,
     ):
         self.model_path = model_path
-        self.mmproj_path = mmproj_path
         self.max_tokens = max_tokens
         self._model = None
         self._degraded = False
+        self._inference_lock = threading.Lock()
 
         log.info("Loading Brain model: %s", model_path)
-        if mmproj_path:
-            log.info("  mmproj configured (ignored in text mode): %s", mmproj_path)
         log.info("  n_gpu_layers=%d, n_ctx=%d", n_gpu_layers, n_ctx)
-
-        from llama_cpp import Llama
+        _bootstrap_llama_runtime()
 
         try:
+            from llama_cpp import Llama
+
             self._model = Llama(
                 model_path=model_path,
                 n_gpu_layers=n_gpu_layers,
@@ -65,6 +80,7 @@ class BrainReasoner:
         frame: np.ndarray,
         detection_summary: str,
         audio_transcript: str = "",
+        interaction_context: str = "",
         camera_id: str = "main",
     ) -> Optional[Dict[str, Any]]:
         """
@@ -91,12 +107,17 @@ class BrainReasoner:
             camera_id=camera_id,
             detection_summary=detection_summary,
             audio_transcript=audio_transcript,
+            interaction_context=interaction_context,
         )
 
         if self._model is None:
             return self._fallback_verdict(detection_summary, audio_transcript)
 
-        return self._infer(user_text)
+        verdict = self._infer(user_text)
+        if verdict is None:
+            log.warning("Brain output was unusable; falling back to deterministic rules")
+            return self._fallback_verdict(detection_summary, audio_transcript)
+        return verdict
 
     def chat(
         self,
@@ -106,7 +127,7 @@ class BrainReasoner:
     ) -> str:
         """
         Interactive chat mode — user sends text, Brain responds.
-        Used by Web Console and Telegram commands.
+        Used by the browser command console.
         """
         if not self.available:
             return "Brain not available."
@@ -117,7 +138,7 @@ class BrainReasoner:
             )
 
         messages: List[Dict] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": CHAT_SYSTEM_PROMPT},
         ]
 
         prompt = user_message
@@ -131,12 +152,14 @@ class BrainReasoner:
         messages.append({"role": "user", "content": prompt})
 
         try:
-            response = self._model.create_chat_completion(
-                messages=messages,
-                max_tokens=self.max_tokens,
-                temperature=0.7,
-            )
-            return response["choices"][0]["message"]["content"]
+            with self._inference_lock:
+                response = self._model.create_chat_completion(
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    temperature=0.7,
+                )
+            raw = response["choices"][0]["message"]["content"]
+            return self._chat_text_from_raw(raw)
         except Exception as e:
             log.error("Chat failed: %s", e)
             return f"Error: {e}"
@@ -152,12 +175,13 @@ class BrainReasoner:
 
         t0 = time.perf_counter()
         try:
-            response = self._model.create_chat_completion(
-                messages=messages,
-                max_tokens=self.max_tokens,
-                temperature=0.7,
-                top_p=0.9,
-            )
+            with self._inference_lock:
+                response = self._model.create_chat_completion(
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    temperature=0.2,
+                    top_p=0.9,
+                )
             elapsed = time.perf_counter() - t0
 
             raw = response["choices"][0]["message"]["content"]
@@ -228,6 +252,31 @@ class BrainReasoner:
 
         log.warning("Failed to parse Brain output: %s", raw[:300])
         return None
+
+    def _chat_text_from_raw(self, raw: str) -> str:
+        """Convert structured Brain output into a conversational chat reply."""
+        verdict = self._parse_output(raw)
+        if not verdict:
+            return raw
+
+        actions = verdict.get("actions", [])
+        speak_action = next((a for a in actions if a.get("function") == "speak"), None)
+        if speak_action:
+            message = speak_action.get("params", {}).get("message", "").strip()
+            if message:
+                return message
+
+        alert_action = next((a for a in actions if a.get("function") == "alert"), None)
+        if alert_action:
+            message = alert_action.get("params", {}).get("message", "").strip()
+            if message:
+                return message
+
+        reasoning = str(verdict.get("chain_of_thought", "")).strip()
+        if reasoning:
+            return reasoning
+
+        return raw
 
     def _fallback_verdict(self, detection_summary: str, audio_transcript: str) -> Dict[str, Any]:
         """Simple deterministic fallback when LLM model cannot be loaded."""

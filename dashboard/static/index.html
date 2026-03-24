@@ -4,28 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0a0a0f">
-    <meta name="description" content="Vanguard AI — Autonomous Security Dashboard">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Vanguard AI browser dashboard">
     <title>Vanguard AI</title>
-    <link rel="manifest" href="/manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 
 <body>
-
-    <!-- ── Vanguard AI Command Center (Desktop UI) ────────────────────── -->
     <div id="desktopLanding" class="desktop-landing">
         <div class="command-center">
-
-            <!-- Header -->
             <header class="cmd-header">
                 <div class="cmd-title">
                     <div class="hero-icon small">
@@ -33,6 +24,12 @@
                             <circle cx="24" cy="24" r="20" stroke="url(#grad2)" stroke-width="2" opacity="0.3" />
                             <circle cx="24" cy="24" r="12" stroke="url(#grad2)" stroke-width="2" />
                             <circle cx="24" cy="24" r="4" fill="url(#grad2)" />
+                            <defs>
+                                <linearGradient id="grad2" x1="0" y1="0" x2="48" y2="48">
+                                    <stop stop-color="#6366f1" />
+                                    <stop offset="1" stop-color="#ec4899" />
+                                </linearGradient>
+                            </defs>
                         </svg>
                     </div>
                     <h2>Vanguard<span class="accent">AI</span></h2>
@@ -44,7 +41,6 @@
             </header>
 
             <div class="cmd-grid">
-                <!-- Left: Live Feed -->
                 <div class="cmd-panel feed-panel">
                     <div class="panel-header">Live Camera Vision</div>
                     <div class="video-container">
@@ -62,7 +58,6 @@
                     </div>
                 </div>
 
-                <!-- Right: Logs & Connectivity -->
                 <div class="cmd-sidebar">
                     <div class="cmd-panel log-panel">
                         <div class="panel-header">Brain Activity Logs</div>
@@ -72,51 +67,34 @@
                     </div>
 
                     <div class="cmd-panel chat-panel">
-                        <div class="panel-header">Command Console</div>
+                        <div class="panel-header panel-header-split">
+                            <span>Command Console</span>
+                            <span class="speech-state" id="speechState">Browser hearing loading...</span>
+                        </div>
                         <div class="chat-messages" id="chatMessages"></div>
                         <div class="chat-input-row">
-                            <input type="text" id="chatInput" placeholder="Talk to the Brain..." autocomplete="off" />
+                            <button type="button" id="chatMic" class="chat-mic-btn" onclick="toggleChatMic()">Mic</button>
+                            <input type="text" id="chatInput" placeholder="Talk to Vanguard..." autocomplete="off" />
                             <button id="chatSend" onclick="sendChat()">Send</button>
-                        </div>
-                    </div>
-
-                    <div class="cmd-panel qr-panel">
-                        <div class="panel-header">Mobile Dashboard Sync</div>
-                        <div class="qr-content-row">
-                            <div id="qrcode" class="qr-container small"></div>
-                            <div class="qr-instructions">
-                                <p><strong>1. Scan</strong> to open on your phone</p>
-                                <p><strong>2. Install PWA:</strong></p>
-                                <ul>
-                                    <li>iOS: Share → "Add to Home Screen"</li>
-                                    <li>Android: Tap "Install App" or Add to Home Screen</li>
-                                </ul>
-                                <button class="btn-text" onclick="hideLanding()">Minimize to PWA View</button>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
-    <!-- ── Status Bar ──────────────────────────────────────── -->
     <header class="status-bar">
         <div class="status-left">
             <div class="pulse-dot" id="statusDot"></div>
             <span class="status-text" id="statusText">Connecting...</span>
         </div>
         <div class="status-right">
-            <span class="client-count" id="clientCount">0 devices</span>
+            <span class="client-count" id="clientCount">0 events</span>
             <span class="time" id="currentTime">--:--</span>
         </div>
     </header>
 
-    <!-- ── Main Content ────────────────────────────────────── -->
     <main class="container">
-
-        <!-- Hero Section -->
         <section class="hero">
             <div class="hero-icon">
                 <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -132,10 +110,9 @@
                 </svg>
             </div>
             <h1>Vanguard<span class="accent">AI</span></h1>
-            <p class="subtitle">Autonomous Security • Real-Time Intelligence</p>
+            <p class="subtitle">Browser Security Console</p>
         </section>
 
-        <!-- Stats Row -->
         <section class="stats-row">
             <div class="stat-card">
                 <span class="stat-value" id="alertCount">0</span>
@@ -151,32 +128,23 @@
             </div>
         </section>
 
-        <!-- Alert Feed -->
         <section class="feed-section">
             <div class="feed-header">
                 <h2>Live Feed</h2>
                 <button class="clear-btn" id="clearBtn" onclick="clearAlerts()">Clear</button>
             </div>
 
-            <!-- Empty state -->
             <div class="empty-state" id="emptyState">
-                <div class="empty-icon">🛡️</div>
+                <div class="empty-icon">Shield</div>
                 <p>All clear — no alerts yet</p>
-                <p class="empty-sub">Sentinel is watching. You'll see alerts here in real-time.</p>
+                <p class="empty-sub">Vanguard is watching. Alerts will appear here live.</p>
             </div>
 
-            <!-- Alert cards rendered here -->
             <div class="alert-feed" id="alertFeed"></div>
         </section>
-
     </main>
 
-    <!-- ── Alert Sound ─────────────────────────────────────── -->
-    <audio id="alertSound" preload="auto">
-        <!-- Inline base64 notification beep -->
-    </audio>
-
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=3"></script>
 </body>
 
 </html>

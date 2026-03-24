@@ -9,16 +9,11 @@
 # YOLO Detection
 ultralytics>=8.4.0
 
-# TTS
-pyttsx3
-kokoro>=0.7.0
+# TTS / Audio
 sounddevice
-phonemizer<3.4
-
-# Kokoro transitive deps
-loguru
-num2words
-spacy
+pygame
+requests
+edge-tts
 
 # STT (Speech-to-Text)
 faster-whisper>=1.0.0
@@ -28,19 +23,12 @@ fastapi
 uvicorn
 python-multipart
 
-# Desktop GUI
-customtkinter
-Pillow
-
 # Ngrok tunnel
 pyngrok
 
 # Vision
 opencv-python
 numpy
-
-# Telegram
-requests
 
 # PyTorch (YOLO needs it, but no torchvision/transformers)
 torch>=2.6.0

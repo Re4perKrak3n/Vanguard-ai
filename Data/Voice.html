@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vanguard Browser STT</title>
+</head>
+<body>
+    <button id="start" onclick="startRecognition()">Start</button>
+    <button id="end" onclick="stopRecognition()">Stop</button>
+    <p id="output"></p>
+    <script>
+        const output = document.getElementById('output');
+        let recognition = null;
+        let latestTranscript = "";
+
+        function clearTranscript() {
+            latestTranscript = "";
+            output.textContent = "";
+        }
+
+        function stopRecognition() {
+            if (recognition) {
+                recognition.onend = null;
+                recognition.stop();
+            }
+        }
+
+        function startRecognition() {
+            clearTranscript();
+            stopRecognition();
+            const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+            if (!SpeechRecognition) {
+                output.textContent = "__unsupported__";
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onresult = function(event) {
+                let finalTranscript = "";
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + " ";
+                    }
+                }
+                finalTranscript = finalTranscript.trim();
+                if (finalTranscript) {
+                    latestTranscript = finalTranscript;
+                    output.textContent = finalTranscript;
+                }
+            };
+
+            recognition.onerror = function(event) {
+                output.textContent = "__error__:" + event.error;
+            };
+
+            recognition.start();
+        }
+
+        function getTranscript() {
+            return latestTranscript || output.textContent || "";
+        }
+    </script>
+</body>
+</html>

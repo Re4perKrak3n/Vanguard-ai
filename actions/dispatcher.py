@@ -30,11 +30,9 @@ class ActionDispatcher:
         self,
         tts: Any,
         dashboard: DashboardAlert,
-        telegram=None,   # Optional TelegramUplink
     ):
         self.tts = tts
         self.dashboard = dashboard
-        self.telegram = telegram
 
         # Registry of available functions
         self._handlers = {
@@ -59,7 +57,7 @@ class ActionDispatcher:
         Args:
             actions: List of {"function": str, "params": dict} items.
             frame: The current camera frame (attached to alerts).
-            verdict_data: Full Brain verdict (passed to dashboard + Telegram).
+            verdict_data: Full Brain verdict for dashboard rendering.
         """
         for action in actions:
             fn_name = action.get("function", "")
@@ -87,7 +85,7 @@ class ActionDispatcher:
         self.tts.speak_async(message)
 
     def _handle_alert(self, params: dict, frame=None, verdict_data=None, **kwargs):
-        """Push an alert to the PWA dashboard + Telegram."""
+        """Push an alert to the browser dashboard."""
         message = params.get("message", "")
         priority = params.get("priority", "medium")
         if not message:
@@ -100,13 +98,6 @@ class ActionDispatcher:
             frame=frame,
             verdict_data=verdict_data,
         )
-        # Also push to Telegram if available
-        if self.telegram and self.telegram.available:
-            self.telegram.send_alert(
-                message=message,
-                frame=frame,
-                verdict_data=verdict_data,
-            )
 
     def _handle_log(self, params: dict, **kwargs):
         """Log an event (no external action)."""

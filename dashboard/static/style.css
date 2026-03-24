@@ -609,6 +609,13 @@ body {
     color: var(--text-muted);
 }
 
+.panel-header-split {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
 /* Left Panel: Feed */
 .feed-panel {
     flex: 2;
@@ -868,6 +875,47 @@ body {
     border-top: 1px solid var(--border);
 }
 
+.speech-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.speech-state.ready {
+    color: var(--threat-low);
+    border-color: rgba(34, 197, 94, 0.2);
+    background: rgba(34, 197, 94, 0.12);
+}
+
+.speech-state.listening {
+    color: var(--accent-bright);
+    border-color: rgba(99, 102, 241, 0.25);
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.speech-state.error {
+    color: var(--threat-critical);
+    border-color: rgba(239, 68, 68, 0.25);
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.chat-mic-btn {
+    min-width: 58px;
+}
+
+.chat-mic-btn.listening {
+    background: linear-gradient(135deg, #2563eb, #06b6d4) !important;
+}
+
 .chat-input-row input {
     flex: 1;
     background: var(--bg-secondary);
@@ -900,6 +948,12 @@ body {
 
 .chat-input-row button:hover {
     transform: scale(1.02);
+}
+
+.chat-input-row button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    transform: none;
 }
 
 .chat-input-row button:active {
